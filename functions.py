@@ -1,7 +1,6 @@
 """ Various useful functions for the CMA-ES algorithm run and the cost calculation """
 
 import numpy as np
-
 from numba import jit
 from scipy.integrate import odeint
 
@@ -10,10 +9,9 @@ from utils_numba import np_max, np_min
 
 @jit(nopython=True)
 def clock_model(y, t, p):
-
     """
     Definition of the ODE dynamical system of the circadian clock
-    
+
     Variables:
     y = [x1, x2, x5, x6,
          y1, y2, y3, y4, y5,
@@ -24,26 +22,74 @@ def clock_model(y, t, p):
          Per, Cry, Rev-Erb, Ror, Bmal1,
          CRY_C, PER_C, PER/CRY_C, CLOCK_C, REV-ERB_C, ROR_C,
          BMAL_C, CLOCK/BMAL_C, Clock]
-    
+
     y : list of the state variables values
     t : time vector
     p : parameters vector
-    
+
     """
 
-    vol = .72 / .28
+    vol = 0.72 / 0.28
+    # vol = .8 / .2
 
     dx1_dt = p[45] * y[16] - (p[0] + p[60]) * y[0]
     dx2_dt = p[42] * y[11] - (p[1] + p[61]) * y[1]
     dx5_dt = p[43] * y[13] - p[2] * y[2]
     dx6_dt = p[44] * y[14] - p[3] * y[3]
 
-    dy1_dt = p[20] / (1 + (y[1] / p[24])**p[51] * (y[0] / p[23])**p[52] + (y[0] / p[23])**p[52]) * (1 + p[46] * (y[0] / p[23])**p[52]) - p[4] * y[4]
-    dy2_dt = p[21] / (1 + (y[1] / p[26])**p[53] * (y[0] / p[25])**p[54] + (y[0] / p[25])**p[54]) * (1 + p[47] * (y[0] / p[25])**p[54]) * (1 / (1 + (y[2] / p[27])**p[55])) - p[5] * y[5]
-    dy3_dt = p[56] / (1 + (y[1] / p[29])**p[51] * (y[0] / p[28])**p[52] + (y[0] / p[28])**p[52]) * (1 + p[48] * (y[0] / p[28])**p[52]) - p[6] * y[6]
-    dy4_dt = p[57] / (1 + (y[1] / p[31])**p[51] * (y[0] / p[30])**p[52] + (y[0] / p[30])**p[52]) * (1 + p[49] * (y[0] / p[30])**p[52]) - p[7] * y[7]
-    dy5_dt = p[22] / (1 + (y[2] / p[33])**p[51] + (y[3] / p[32])**p[52]) * (1 + 12 * (y[3] / p[32])**p[52]) - p[8] * y[8]
-    dy6_dt = p[58] / (1 + (y[2] / p[35])**p[51] + (y[3] / p[34])**p[52]) * (1 + p[50] * (y[3] / p[34])**p[52]) - p[9] * y[17]
+    dy1_dt = (
+        p[20]
+        / (
+            1
+            + (y[1] / p[24]) ** p[51] * (y[0] / p[23]) ** p[52]
+            + (y[0] / p[23]) ** p[52]
+        )
+        * (1 + p[46] * (y[0] / p[23]) ** p[52])
+        - p[4] * y[4]
+    )
+    dy2_dt = (
+        p[21]
+        / (
+            1
+            + (y[1] / p[26]) ** p[53] * (y[0] / p[25]) ** p[54]
+            + (y[0] / p[25]) ** p[54]
+        )
+        * (1 + p[47] * (y[0] / p[25]) ** p[54])
+        * (1 / (1 + (y[2] / p[27]) ** p[55]))
+        - p[5] * y[5]
+    )
+    dy3_dt = (
+        p[56]
+        / (
+            1
+            + (y[1] / p[29]) ** p[51] * (y[0] / p[28]) ** p[52]
+            + (y[0] / p[28]) ** p[52]
+        )
+        * (1 + p[48] * (y[0] / p[28]) ** p[52])
+        - p[6] * y[6]
+    )
+    dy4_dt = (
+        p[57]
+        / (
+            1
+            + (y[1] / p[31]) ** p[51] * (y[0] / p[30]) ** p[52]
+            + (y[0] / p[30]) ** p[52]
+        )
+        * (1 + p[49] * (y[0] / p[30]) ** p[52])
+        - p[7] * y[7]
+    )
+    dy5_dt = (
+        p[22]
+        / (1 + (y[2] / p[33]) ** p[51] + (y[3] / p[32]) ** p[52])
+        * (1 + 12 * (y[3] / p[32]) ** p[52])
+        - p[8] * y[8]
+    )
+    dy6_dt = (
+        p[58]
+        / (1 + (y[2] / p[35]) ** p[51] + (y[3] / p[34]) ** p[52])
+        * (1 + p[50] * (y[3] / p[34]) ** p[52])
+        - p[9] * y[17]
+    )
 
     dz1_dt = p[37] * y[5] + p[19] * y[11] - (p[18] * y[10] + p[10]) * y[9]
     dz2_dt = p[36] * y[4] + p[19] * y[11] - (p[18] * y[9] + p[11]) * y[10]
@@ -53,28 +99,69 @@ def clock_model(y, t, p):
     dz7_dt = p[39] * y[7] - (p[44] * vol + p[14]) * y[14]
     dz8_dt = p[40] * y[8] + p[17] * y[16] - (p[16] * y[12] + p[15]) * y[15]
     dz9_dt = p[16] * y[15] * y[12] + vol * p[60] * y[0] - (vol * p[45] + p[17]) * y[16]
-    
-    dXdt = [dx1_dt, dx2_dt, dx5_dt, dx6_dt,
-            dy1_dt, dy2_dt, dy3_dt, dy4_dt, dy5_dt,
-            dz1_dt, dz2_dt, dz4_dt, dz5_dt, dz6_dt, dz7_dt,
-            dz8_dt, dz9_dt, dy6_dt]
-    
+
+    dXdt = [
+        dx1_dt,
+        dx2_dt,
+        dx5_dt,
+        dx6_dt,
+        dy1_dt,
+        dy2_dt,
+        dy3_dt,
+        dy4_dt,
+        dy5_dt,
+        dz1_dt,
+        dz2_dt,
+        dz4_dt,
+        dz5_dt,
+        dz6_dt,
+        dz7_dt,
+        dz8_dt,
+        dz9_dt,
+        dy6_dt,
+    ]
+
     return dXdt
 
 
-
 @jit(nopython=True)
-def compute_loss(Y, arn_seq, arn_seq_max, jeu2_matrix, jeu2_max, jeu3_matrix, jeu3_max, jeu4_matrix, jeu4_max, jeu5_matrix, jeu5_max, jeu7_matrix, jeu7_max, jeu8_matrix, jeu8_max, jeu10_matrix, jeu10_max, w, t_interp_rna, t_interp_jeu2, t_interp_jeu3, t_interp_jeu4, t_interp_jeu5, t_interp_jeu7, t_interp_jeu8, t_interp_jeu10) :
-
+def compute_loss(
+    Y,
+    arn_seq,
+    arn_seq_max,
+    jeu2_matrix,
+    jeu2_max,
+    jeu3_matrix,
+    jeu3_max,
+    jeu4_matrix,
+    jeu4_max,
+    jeu5_matrix,
+    jeu5_max,
+    jeu7_matrix,
+    jeu7_max,
+    jeu8_matrix,
+    jeu8_max,
+    jeu10_matrix,
+    jeu10_max,
+    w,
+    t_interp_rna,
+    t_interp_jeu2,
+    t_interp_jeu3,
+    t_interp_jeu4,
+    t_interp_jeu5,
+    t_interp_jeu7,
+    t_interp_jeu8,
+    t_interp_jeu10,
+):
     """
     Compute the loss function using a sum of squared errors and a maximum
     weighting.
-    
+
     Y : list of the solution of the ODE system values
     arn_seq : numpy array pf the RNA-Sequencing data
     arn_seq_max : list of the maximum values for each gene
     t_interp_rna : time points vector
-    
+
     RNA-Seq : [BMAL1, CLOCK, CRY, REV-ERB, PER, ROR]
     Jeu 2 : [BMAL1, CRY]
     Jeu 3 : [CRY, REV-ERB]
@@ -83,96 +170,180 @@ def compute_loss(Y, arn_seq, arn_seq_max, jeu2_matrix, jeu2_max, jeu3_matrix, je
     Jeu 7 : [PER, REV-ERB, CLOCK, ROR]
     Jeu 8 : [BMAL1, CRY]
     Jeu 10 : [BMAL1, CRY, REV-ERB]
-        
+
     """
     # RNA - SEQUENCING ########################################################
-    ls_rna = np.sum(((arn_seq - Y[:, np.array([8, 17, 5, 6, 4, 7])][t_interp_rna]) / arn_seq_max)**2) / len(t_interp_rna)
-    
-    
+    ls_rna = 0
+    idx = [8, 17, 5, 6, 4, 7]
+    for i in range(len(arn_seq)):
+        ls_rna += np.sum(
+            ((arn_seq[i] - Y[:, idx[i]][t_interp_rna[i]]) / arn_seq_max[i]) ** 2
+        ) / len(t_interp_rna[i])
+
     # INITIALISATION OF THE DATA ##############################################
     # BMAL1 = CLOCK/BMAL_N + BMAL_C + CLOCK/BMAL_C
-    bmal1_data = w[0]*Y[:,0] + w[15]*Y[:,15] + w[16]*Y[:,16]
-    
+    bmal1_data = w[0] * Y[:, 0] + w[15] * Y[:, 15] + w[16] * Y[:, 16]
+
     # CRY = PER/CRY_N + CRY_C + PER/CRY_C
-    cry_data = w[1]*Y[:,1] + w[9]*Y[:,9] + w[11]*Y[:,11] 
-    
+    cry_data = w[1] * Y[:, 1] + w[9] * Y[:, 9] + w[11] * Y[:, 11]
+
     # REV-ERB = REV-ERB_N + REV-ERB_C
-    reverb_data = w[2]*Y[:,2] + w[13]*Y[:,13] 
-    
+    reverb_data = w[2] * Y[:, 2] + w[13] * Y[:, 13]
+
     # BMAL1_ N = CLOCK/BMAL_N
-    bmal1n_data = Y[:,0]
-    
+    bmal1n_data = Y[:, 0]
+
     # CRY_N = PER/CRY_N
-    cryn_data = Y[:,1]
-    
+    cryn_data = Y[:, 1]
+
     # CRY_C = CRY_C + PER/CRY_C
-    cryc_data =  Y[:,9] + Y[:,11] 
-    
+    cryc_data = Y[:, 9] + Y[:, 11]
+
     # PER_N = PER/CRY_N
-    pern_data = Y[:,1]
-    
+    pern_data = Y[:, 1]
+
     # PER =  PER/CRY_N + PER_C + PER/CRY_C
-    per_data = w[1]*Y[:,1] + w[10]*Y[:,10] + w[11]*Y[:,11] 
-    
+    per_data = w[1] * Y[:, 1] + w[10] * Y[:, 10] + w[11] * Y[:, 11]
+
     # CLOCK = CLOCK/BMAL_N + CLOCK_C + CLOCK/BMAL_C
-    clock_data = w[0]*Y[:,0] + w[12]*Y[:,12] + w[16]*Y[:,16]
-    
-    # ROR = ROR_N + ROR_C 
-    ror_data = w[3]*Y[:,3] + w[14]*Y[:,14]
-    
-    
+    clock_data = w[0] * Y[:, 0] + w[12] * Y[:, 12] + w[16] * Y[:, 16]
+
+    # ROR = ROR_N + ROR_C
+    ror_data = w[3] * Y[:, 3] + w[14] * Y[:, 14]
+
     # JEU 2 ####################################################################
-    Y_jeu2 =  np.column_stack((bmal1_data, cry_data))
-    ls_jeu2 = np.sum(((jeu2_matrix - Y_jeu2[t_interp_jeu2]) / jeu2_max)**2) / len(t_interp_jeu2)
-    
+    Y_jeu2 = np.column_stack((bmal1_data, cry_data))
+    ls_jeu2 = np.sum(((jeu2_matrix - Y_jeu2[t_interp_jeu2]) / jeu2_max) ** 2) / len(
+        t_interp_jeu2
+    )
+
     # JEU 3 ####################################################################
-    Y_jeu3 =  np.column_stack((cry_data, reverb_data))
-    ls_jeu3 = np.sum(((jeu3_matrix - Y_jeu3[t_interp_jeu3]) / jeu3_max)**2) / len(t_interp_jeu3)
-    
+    Y_jeu3 = np.column_stack((cry_data, reverb_data))
+    ls_jeu3 = np.sum(((jeu3_matrix - Y_jeu3[t_interp_jeu3]) / jeu3_max) ** 2) / len(
+        t_interp_jeu3
+    )
+
     # JEU 4 ####################################################################
-    Y_jeu4 =  np.column_stack((bmal1n_data, cry_data, cryn_data, cryc_data, pern_data))
-    ls_jeu4 = np.sum(((jeu4_matrix - Y_jeu4[t_interp_jeu4]) / jeu4_max)**2) / len(t_interp_jeu4)
-    
+    Y_jeu4 = np.column_stack((bmal1n_data, cry_data, cryn_data, cryc_data, pern_data))
+    ls_jeu4 = np.sum(((jeu4_matrix - Y_jeu4[t_interp_jeu4]) / jeu4_max) ** 2) / len(
+        t_interp_jeu4
+    )
+
     # JEU 5 ####################################################################
-    Y_jeu5 =  np.column_stack((cry_data, cryn_data, cryc_data, per_data))
-    ls_jeu5 = np.sum(((jeu5_matrix - Y_jeu5[t_interp_jeu5]) / jeu5_max)**2) / len(t_interp_jeu5)
-    
+    Y_jeu5 = np.column_stack((cry_data, cryn_data, cryc_data, per_data))
+    ls_jeu5 = np.sum(((jeu5_matrix - Y_jeu5[t_interp_jeu5]) / jeu5_max) ** 2) / len(
+        t_interp_jeu5
+    )
+
     # JEU 7 ####################################################################
-    Y_jeu7 =  np.column_stack((per_data, per_data, per_data, reverb_data, reverb_data, clock_data, clock_data, clock_data, ror_data, ror_data, ror_data, ror_data))
-    ls_jeu7 = np.sum(((jeu7_matrix - Y_jeu7[t_interp_jeu7]) / jeu7_max)**2) / len(t_interp_jeu7)
-    
+    Y_jeu7 = np.column_stack(
+        (
+            per_data,
+            per_data,
+            per_data,
+            reverb_data,
+            reverb_data,
+            clock_data,
+            clock_data,
+            clock_data,
+            ror_data,
+            ror_data,
+            ror_data,
+            ror_data,
+        )
+    )
+    ls_jeu7 = np.sum(((jeu7_matrix - Y_jeu7[t_interp_jeu7]) / jeu7_max) ** 2) / len(
+        t_interp_jeu7
+    )
+
     # JEU 8 ####################################################################
-    Y_jeu8 =  np.column_stack((bmal1_data, cry_data))
-    ls_jeu8 = np.sum(((jeu8_matrix - Y_jeu8[t_interp_jeu8]) / jeu8_max)**2) / len(t_interp_jeu8)
-    
+    Y_jeu8 = np.column_stack((bmal1_data, cry_data))
+    ls_jeu8 = np.sum(((jeu8_matrix - Y_jeu8[t_interp_jeu8]) / jeu8_max) ** 2) / len(
+        t_interp_jeu8
+    )
+
     # JEU 10 ####################################################################
-    Y_jeu10 =  np.column_stack((bmal1_data, cry_data, reverb_data))
-    ls_jeu10 = np.sum(((jeu10_matrix - Y_jeu10[t_interp_jeu10]) / jeu10_max)**2) / len(t_interp_jeu10)
-    
+    Y_jeu10 = np.column_stack((bmal1_data, cry_data, reverb_data))
+    ls_jeu10 = np.sum(
+        ((jeu10_matrix - Y_jeu10[t_interp_jeu10]) / jeu10_max) ** 2
+    ) / len(t_interp_jeu10)
 
     return ls_rna + ls_jeu2 + ls_jeu3 + ls_jeu4 + ls_jeu5 + ls_jeu7 + ls_jeu8 + ls_jeu10
 
 
-
 @jit(nopython=True)
-def constraints_and_loss(Y, arn_seq, arn_seq_max, jeu2_matrix, jeu2_max, jeu3_matrix, jeu3_max, jeu4_matrix, jeu4_max, jeu5_matrix, jeu5_max, jeu7_matrix, jeu7_max, jeu8_matrix, jeu8_max, jeu10_matrix, jeu10_max, w, t_interp_rna, t_interp_jeu2, t_interp_jeu3, t_interp_jeu4, t_interp_jeu5, t_interp_jeu7, t_interp_jeu8, t_interp_jeu10, t) :
-
+def constraints_and_loss(
+    Y,
+    arn_seq,
+    arn_seq_max,
+    jeu2_matrix,
+    jeu2_max,
+    jeu3_matrix,
+    jeu3_max,
+    jeu4_matrix,
+    jeu4_max,
+    jeu5_matrix,
+    jeu5_max,
+    jeu7_matrix,
+    jeu7_max,
+    jeu8_matrix,
+    jeu8_max,
+    jeu10_matrix,
+    jeu10_max,
+    w,
+    t_interp_rna,
+    t_interp_jeu2,
+    t_interp_jeu3,
+    t_interp_jeu4,
+    t_interp_jeu5,
+    t_interp_jeu7,
+    t_interp_jeu8,
+    t_interp_jeu10,
+    t,
+):
     """
-    Check for several constraints and compute loss. 
-    
+    Check for several constraints and compute loss.
+
     Y : list of the solution of the ODE system values
     arn_seq : numpy array pf the RNA-Sequencing data
     arn_seq_max : list of the maximum values for each gene
     t_interp_rna : time points vector
-    
+
     """
-    
+
     ma = np_max(Y[-601:], 0)
     if ma.max() == 0:
         return np.random.normal(1e10, 1e8)
 
-    loss = compute_loss(Y, arn_seq, arn_seq_max, jeu2_matrix, jeu2_max, jeu3_matrix, jeu3_max, jeu4_matrix, jeu4_max, jeu5_matrix, jeu5_max, jeu7_matrix, jeu7_max, jeu8_matrix, jeu8_max, jeu10_matrix, jeu10_max, w, t_interp_rna, t_interp_jeu2, t_interp_jeu3, t_interp_jeu4, t_interp_jeu5, t_interp_jeu7, t_interp_jeu8, t_interp_jeu10)
-    
+    loss = compute_loss(
+        Y,
+        arn_seq,
+        arn_seq_max,
+        jeu2_matrix,
+        jeu2_max,
+        jeu3_matrix,
+        jeu3_max,
+        jeu4_matrix,
+        jeu4_max,
+        jeu5_matrix,
+        jeu5_max,
+        jeu7_matrix,
+        jeu7_max,
+        jeu8_matrix,
+        jeu8_max,
+        jeu10_matrix,
+        jeu10_max,
+        w,
+        t_interp_rna,
+        t_interp_jeu2,
+        t_interp_jeu3,
+        t_interp_jeu4,
+        t_interp_jeu5,
+        t_interp_jeu7,
+        t_interp_jeu8,
+        t_interp_jeu10,
+    )
+    # return loss
     # do not care about constraint until the loss is low enough.
     if loss < 1e4:
         # cb_max = CLOCK/BMAL_C + CLOCK/BMAL_N
@@ -184,17 +355,19 @@ def constraints_and_loss(Y, arn_seq, arn_seq_max, jeu2_matrix, jeu2_max, jeu3_ma
 
         mi = np_min(Y[-601:], 0)
         amp = (ma - mi) / ma
-        p = np.zeros(Y.shape[1])
-        for j in range(Y.shape[1]):
-            p[j] = indiv_period_comp(Y[-601:, j], t[-601:])
-        a = np.array([.15*clock_tot, cb_max, 0.5 * per_tot, 5e-2, 1e-14, ma.max()])
-        b = np.array([cb_max, .85 * clock_tot, ma[11], amp.min(), mi.min(), 1e-5])
+        a = np.array([0.15 * clock_tot, cb_max, 0.5 * per_tot, 5e-2, 1e-14, ma.max()])
+        b = np.array([cb_max, 0.85 * clock_tot, ma[11], amp.min(), mi.min(), 1e-5])
 
         # period should be between 14 and 45 (large)
-        a = np.append(a, 14 * np.ones(Y.shape[1]))
-        a = np.append(a, p)
-        b = np.append(b, p)
-        b = np.append(b, 45 * np.ones(Y.shape[1]))
+        # release the period check when fit good enough as it prevents unusual oscillations
+        if loss > 2.3:
+            p = np.zeros(Y.shape[1])
+            for j in range(Y.shape[1]):
+                p[j] = indiv_period_comp(Y[-601:, j], t[-601:])
+            a = np.append(a, 14 * np.ones(Y.shape[1]))
+            a = np.append(a, p)
+            b = np.append(b, p)
+            b = np.append(b, 45 * np.ones(Y.shape[1]))
         c = new_transform_constraint_penalty(a, b)
 
         full_loss = loss + c
@@ -204,43 +377,97 @@ def constraints_and_loss(Y, arn_seq, arn_seq_max, jeu2_matrix, jeu2_max, jeu3_ma
     return full_loss
 
 
-
-def fitness(params, f, arn_seq, arn_seq_max, jeu2_matrix, jeu2_max, jeu3_matrix, jeu3_max, jeu4_matrix, jeu4_max, jeu5_matrix, jeu5_max, jeu7_matrix, jeu7_max, jeu8_matrix, jeu8_max, jeu10_matrix, jeu10_max, w, t_interp_rna, t_interp_jeu2, t_interp_jeu3, t_interp_jeu4, t_interp_jeu5, t_interp_jeu7, t_interp_jeu8, t_interp_jeu10, t, y0):
-
+def fitness(
+    params,
+    f,
+    arn_seq,
+    arn_seq_max,
+    jeu2_matrix,
+    jeu2_max,
+    jeu3_matrix,
+    jeu3_max,
+    jeu4_matrix,
+    jeu4_max,
+    jeu5_matrix,
+    jeu5_max,
+    jeu7_matrix,
+    jeu7_max,
+    jeu8_matrix,
+    jeu8_max,
+    jeu10_matrix,
+    jeu10_max,
+    w,
+    t_interp_rna,
+    t_interp_jeu2,
+    t_interp_jeu3,
+    t_interp_jeu4,
+    t_interp_jeu5,
+    t_interp_jeu7,
+    t_interp_jeu8,
+    t_interp_jeu10,
+    t,
+    y0,
+):
     """
     The fitness function called by CMA-ES at each feval.
-    
+
     params : vector of parameters
     f : function that describe the ODEs to solve
     arn_seq : numpy array pf the RNA-Sequencing data
     arn_seq_max : list of the maximum values for each gene
     t_interp_rna : time points vector
     t : time points vector
-    y0 : initial values of the sate variables 
-    
+    y0 : initial values of the sate variables
+
     """
 
     Y = odeint(f, y0, t, args=(params,), rtol=1e-12, atol=1e-12)
     if check_nanneg(Y):
         return 1e100
 
-    loss = constraints_and_loss(Y, arn_seq, arn_seq_max, jeu2_matrix, jeu2_max, jeu3_matrix, jeu3_max, jeu4_matrix, jeu4_max, jeu5_matrix, jeu5_max, jeu7_matrix, jeu7_max, jeu8_matrix, jeu8_max, jeu10_matrix, jeu10_max, w, t_interp_rna, t_interp_jeu2, t_interp_jeu3, t_interp_jeu4, t_interp_jeu5, t_interp_jeu7, t_interp_jeu8, t_interp_jeu10, t)
+    loss = constraints_and_loss(
+        Y,
+        arn_seq,
+        arn_seq_max,
+        jeu2_matrix,
+        jeu2_max,
+        jeu3_matrix,
+        jeu3_max,
+        jeu4_matrix,
+        jeu4_max,
+        jeu5_matrix,
+        jeu5_max,
+        jeu7_matrix,
+        jeu7_max,
+        jeu8_matrix,
+        jeu8_max,
+        jeu10_matrix,
+        jeu10_max,
+        w,
+        t_interp_rna,
+        t_interp_jeu2,
+        t_interp_jeu3,
+        t_interp_jeu4,
+        t_interp_jeu5,
+        t_interp_jeu7,
+        t_interp_jeu8,
+        t_interp_jeu10,
+        t,
+    )
 
     return loss
 
 
-
 def wrapper_fit(params, params_max, params_min, scaler, fitness, *args):
-
     """
     Wrapper for fitness function and parameter scaling.
-    
+
     params : vector of parameters
     params_max : list of maximum boundaries for each parameter
     params_min : list of minimum boundaries for each parameter
-    scaler : function for scaling 
-    fitness : fitnes function 
-    
+    scaler : function for scaling
+    fitness : fitnes function
+
     """
 
     params = scaler(params, params_max, params_min)
@@ -249,7 +476,6 @@ def wrapper_fit(params, params_max, params_min, scaler, fitness, *args):
 
 @jit(nopython=True)
 def indiv_period_comp(Y, t, thresh=1.5):
-
     a, b = np.empty(0), np.empty(0)
     for i in range(1, len(Y) - 1):
         # just looking for a peak
@@ -270,14 +496,12 @@ def indiv_period_comp(Y, t, thresh=1.5):
         else:
             per = 0
     else:
-        per =0
+        per = 0
     return per
-
 
 
 @jit(nopython=True)
 def from_log_010_to_ab(x, xmax, xmin):
-
     """
     Log space scaling.
     See http://cma.gforge.inria.fr/cmaes_sourcecode_page.html for a explanation.
@@ -288,24 +512,22 @@ def from_log_010_to_ab(x, xmax, xmin):
 
 @jit(nopython=True)
 def check_nanneg(Y):
-
     """
     Check whether or not a solution Y contains negative values.
-    
+
     Y : solution of the ODE system
-    
+
     """
 
     for yrow in Y:
         for yval in yrow:
-            if yval != yval or yval < 0 :
+            if yval != yval or yval < 0:
                 return 1
+
 
 @jit(nopython=True)
 def new_transform_constraint_penalty(a, b):
-
     """Create a penalty term from a list of constraints.
     syntax is such that if a > b then penalize
     """
-    
-    return (np.maximum(a-b, 0)**2).sum()
+    return (np.maximum(a - b, 0) ** 2).sum()
