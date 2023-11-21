@@ -242,8 +242,29 @@ def bounds_reach(params, params_min, params_max):
     return ind_reached
     
     
-    
-    
-    
-    
-    
+def new_preprocessing_rna_seq_data(rna_seq_data):
+
+    paralogs = ["ARNTL", "CLOCK", "CRY1", "CRY2", "NR1D1", "NR1D2", "PER1", "PER2", "PER3", "RORA", "RORB"]
+    names = ["BMAL1", "CLOCK", "CRY", "REV-ERB", "PER", "ROR"]
+    idx = [[0], [1], [2, 3], [4, 5], [6, 7, 8], [9, 10]]
+    GENES, CTs = [], []
+
+    for i in range(len(names)):
+        concat = np.array([rna_seq_data["ctrl"][paralogs[j]]["pts"] for j in idx[i]])
+        nansum = np.nansum(concat, axis=0) # multiply this by 10**3 for pmol/L visualization
+        gene, ct = [], []
+        print(nansum.shape)
+        for l in range(nansum.shape[0]):
+            gene.append([])
+            for k in range(nansum.shape[1]):
+                # if we have a zero in the nansum: either it's a true zero, or it's a sum of nans.
+                if not nansum[l, k]:
+                    if not np.isnan(concat[:, l, k]).all():
+                        gene[l].append(nansum[l, k])
+                        ct.append(rna_seq_data["CTs"][l])
+                else:
+                    gene[l].append(nansum[l, k])
+                    ct.append(rna_seq_data["CTs"][l])
+        GENES.append(gene)
+        CTs.append(ct)
+    return GENES, CTs
