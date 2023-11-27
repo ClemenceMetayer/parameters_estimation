@@ -188,6 +188,137 @@ def preprocessing_prot_data(prot_data):
     )
 
 
+def next_preprocessing_prot_data(prot_data):
+    (
+        jeu2_matrix,
+        jeu2_timepoints,
+        jeu3_matrix,
+        jeu3_timepoints,
+        jeu4_matrix,
+        jeu4_timepoints,
+        jeu5_matrix,
+        jeu5_timepoints,
+        jeu7_matrix,
+        jeu7_timepoints,
+        jeu8_matrix,
+        jeu8_timepoints,
+        jeu10_matrix,
+        jeu10_timepoints,
+    ) = preprocessing_prot_data(prot_data)
+    # create a list [[species_x, cts_x] for x in prots]
+    # Jeu 2 : [BMAL1, CRY]
+    # Jeu 3 : [CRY, REV-ERB]
+    # Jeu 4 : [BMAL1_N, CRY, CRY_N, CRY_C, PER_N]
+    # Jeu 5 : [CRY, CRY_N, CRY_C, PER]
+    # Jeu 7 : [PER, REV-ERB, CLOCK, ROR]
+    # Jeu 8 : [BMAL1, CRY]
+    # Jeu 10 : [BMAL1, CRY, REV-ERB]
+
+    jeu2_matrix /= 10**9
+    jeu3_matrix /= 10**9
+    jeu4_matrix /= 10**9
+    jeu5_matrix /= 10**9
+    jeu7_matrix /= 10**9
+    jeu8_matrix /= 10**9
+    jeu10_matrix /= 10**9
+
+    # jeu 7: [per, per, per, reverb, clock, ror, ror, ror]
+    jeu7 = []
+    for i in range(jeu7_matrix.shape[1]):
+        idx = np.where(jeu7_matrix[:, i] > 0)[0]
+        jeu7.append([jeu7_matrix[idx, i], [jeu7_timepoints[i] for i in idx]])
+    jeu7 = [jeu7[i] for i in range(len(jeu7)) if i not in [3, 5, 6, 11]]
+
+    # BMAL1: Jeu_2-8-10
+    idx_bmal = [0, 0, 0]
+    bmal = np.r_[jeu2_matrix[:, 0], jeu8_matrix[:, 0], jeu10_matrix[:, 0]]
+    bmal_max = np.max(bmal)
+    bmal_tpts = np.r_[jeu2_timepoints, jeu8_timepoints, jeu10_timepoints]
+
+    # BMAL_N: Jeu_4
+    idx_bmaln = [0]
+    bmaln = jeu4_matrix[:, 0]
+    bmaln_max = np.max(bmaln)
+    bmaln_tpts = np.array(jeu4_timepoints)
+
+    # CRY: Jeu_2-3-4-5-8-10
+    idx_cry = [1, 0, 1, 0, 1, 1]
+    cry = np.r_[
+        jeu2_matrix[:, 1],
+        jeu3_matrix[:, 0],
+        jeu4_matrix[:, 1],
+        jeu5_matrix[:, 0],
+        jeu8_matrix[:, 1],
+        jeu10_matrix[:, 1],
+    ]
+    cry_max = np.max(cry)
+    cry_tpts = np.r_[
+        jeu2_timepoints,
+        jeu3_timepoints,
+        jeu4_timepoints,
+        jeu5_timepoints,
+        jeu8_timepoints,
+        jeu10_timepoints,
+    ]
+
+    # CRY_N: Jeu_4-5
+    idx_cryn = [2, 1]
+    cryn = np.r_[jeu4_matrix[:, 2], jeu5_matrix[1:, 1]]
+    cryn_max = np.max(cryn)
+    cryn_tpts = np.r_[jeu4_timepoints, jeu5_timepoints[1:]]
+
+    # CRY_C: Jeu_4-5
+    idx_cryc = [3, 2]
+    cryc = np.r_[jeu4_matrix[:, 3], jeu5_matrix[1:, 2]]
+    cryc_max = np.max(cryc)
+    cryc_tpts = np.r_[jeu4_timepoints, jeu5_timepoints[1:]]
+
+    # REV-ERB: Jeu_3-7
+    idx_rev = [1, 3]
+    rev = np.r_[jeu3_matrix[:, 1], jeu7[3][0]]
+    rev_max = np.max(rev)
+    rev_tpts = np.r_[jeu3_timepoints, jeu7[3][1]]
+
+    # CLOCK: Jeu_7
+    idx_clock = [5, 6, 7]
+    clock = np.r_[jeu7[4][0]]
+    clock_max = np.max(clock)
+    clock_tpts = np.r_[jeu7[4][1]]
+
+    # PER: Jeu_5-7
+    idx_per = [3, 0, 1, 2]
+    per = np.r_[jeu5_matrix[:, 3], jeu7[0][0], jeu7[1][0], jeu7[2][0]]
+    per_max = np.max(per)
+    per_tpts = np.r_[jeu5_timepoints, jeu7[0][1], jeu7[1][1], jeu7[2][1]]
+
+    # PER_N: Jeu_4
+    idx_per = [4]
+    pern = jeu4_matrix[:, 4]
+    pern_max = np.max(pern)
+    pern_tpts = np.array(jeu4_timepoints)
+
+    # ROR: Jeu_7
+    idx_ror = [8, 9, 10, 11]
+    ror = np.r_[jeu7[5][0], jeu7[6][0], jeu7[7][0]]
+    ror_max = np.max(ror)
+    ror_tpts = np.r_[jeu7[5][1], jeu7[6][1], jeu7[7][1]]
+
+    # order: [BMAL1, BMAL1_N, CRY, CRY_N, CRY_C, REV-ERB, CLOCK, PER, PER_N, ROR]
+    data = [
+        [bmal, bmal_tpts, bmal_max],
+        [bmaln, bmaln_tpts, bmaln_max],
+        [cry, cry_tpts, cry_max],
+        [cryn, cryn_tpts, cryn_max],
+        [cryc, cryc_tpts, cryc_max],
+        [rev, rev_tpts, rev_max],
+        [clock, clock_tpts, clock_max],
+        [per, per_tpts, per_max],
+        [pern, pern_tpts, pern_max],
+        [ror, ror_tpts, ror_max],
+    ]
+    return data
+
+
 def get_parameter_bounds_percent(params, percent):
     """
     Determine the parameter lower and upper bounds based on the SW480 circadian

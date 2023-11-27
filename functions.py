@@ -129,29 +129,11 @@ def compute_loss(
     Y,
     arn_seq,
     arn_seq_max,
-    jeu2_matrix,
-    jeu2_max,
-    jeu3_matrix,
-    jeu3_max,
-    jeu4_matrix,
-    jeu4_max,
-    jeu5_matrix,
-    jeu5_max,
-    jeu7_matrix,
-    jeu7_max,
-    jeu8_matrix,
-    jeu8_max,
-    jeu10_matrix,
-    jeu10_max,
+    prot,
+    prot_max,
     w,
     t_interp_rna,
-    t_interp_jeu2,
-    t_interp_jeu3,
-    t_interp_jeu4,
-    t_interp_jeu5,
-    t_interp_jeu7,
-    t_interp_jeu8,
-    t_interp_jeu10,
+    t_interp_prot,
 ):
     """
     Compute the loss function using a sum of squared errors and a maximum
@@ -175,6 +157,7 @@ def compute_loss(
     # RNA - SEQUENCING ########################################################
     ls_rna = 0
     idx = [8, 17, 5, 6, 4, 7]
+    # BMAL CLOCK CRY REV PER ROR
     for i in range(len(arn_seq)):
         ls_rna += np.sum(
             ((arn_seq[i] - Y[:, idx[i]][t_interp_rna[i]]) / arn_seq_max[i]) ** 2
@@ -211,64 +194,26 @@ def compute_loss(
     # ROR = ROR_N + ROR_C
     ror_data = w[3] * Y[:, 3] + w[14] * Y[:, 14]
 
-    # JEU 2 ####################################################################
-    Y_jeu2 = np.column_stack((bmal1_data, cry_data))
-    ls_jeu2 = np.sum(((jeu2_matrix - Y_jeu2[t_interp_jeu2]) / jeu2_max) ** 2) / len(
-        t_interp_jeu2
-    )
+    # order BMAL1, BMAL1_N, CRY, CRY_N, CRY_C, REV-ERB, CLOCK, PER, PER_N, ROR]
+    variables = [
+        bmal1_data,
+        bmal1n_data,
+        cry_data,
+        cryn_data,
+        cryc_data,
+        reverb_data,
+        clock_data,
+        per_data,
+        pern_data,
+        ror_data,
+    ]
+    ls_prot = 0
+    for i in range(len(variables)):
+        ls_prot += np.sum(
+            ((prot[i] - variables[i][t_interp_prot[i]]) / prot_max[i]) ** 2
+        ) / len(t_interp_prot[i])
 
-    # JEU 3 ####################################################################
-    Y_jeu3 = np.column_stack((cry_data, reverb_data))
-    ls_jeu3 = np.sum(((jeu3_matrix - Y_jeu3[t_interp_jeu3]) / jeu3_max) ** 2) / len(
-        t_interp_jeu3
-    )
-
-    # JEU 4 ####################################################################
-    Y_jeu4 = np.column_stack((bmal1n_data, cry_data, cryn_data, cryc_data, pern_data))
-    ls_jeu4 = np.sum(((jeu4_matrix - Y_jeu4[t_interp_jeu4]) / jeu4_max) ** 2) / len(
-        t_interp_jeu4
-    )
-
-    # JEU 5 ####################################################################
-    Y_jeu5 = np.column_stack((cry_data, cryn_data, cryc_data, per_data))
-    ls_jeu5 = np.sum(((jeu5_matrix - Y_jeu5[t_interp_jeu5]) / jeu5_max) ** 2) / len(
-        t_interp_jeu5
-    )
-
-    # JEU 7 ####################################################################
-    Y_jeu7 = np.column_stack(
-        (
-            per_data,
-            per_data,
-            per_data,
-            reverb_data,
-            reverb_data,
-            clock_data,
-            clock_data,
-            clock_data,
-            ror_data,
-            ror_data,
-            ror_data,
-            ror_data,
-        )
-    )
-    ls_jeu7 = np.sum(((jeu7_matrix - Y_jeu7[t_interp_jeu7]) / jeu7_max) ** 2) / len(
-        t_interp_jeu7
-    )
-
-    # JEU 8 ####################################################################
-    Y_jeu8 = np.column_stack((bmal1_data, cry_data))
-    ls_jeu8 = np.sum(((jeu8_matrix - Y_jeu8[t_interp_jeu8]) / jeu8_max) ** 2) / len(
-        t_interp_jeu8
-    )
-
-    # JEU 10 ####################################################################
-    Y_jeu10 = np.column_stack((bmal1_data, cry_data, reverb_data))
-    ls_jeu10 = np.sum(
-        ((jeu10_matrix - Y_jeu10[t_interp_jeu10]) / jeu10_max) ** 2
-    ) / len(t_interp_jeu10)
-
-    return ls_rna + ls_jeu2 + ls_jeu3 + ls_jeu4 + ls_jeu5 + ls_jeu7 + ls_jeu8 + ls_jeu10
+    return ls_rna + ls_prot
 
 
 @jit(nopython=True)
@@ -276,29 +221,11 @@ def constraints_and_loss(
     Y,
     arn_seq,
     arn_seq_max,
-    jeu2_matrix,
-    jeu2_max,
-    jeu3_matrix,
-    jeu3_max,
-    jeu4_matrix,
-    jeu4_max,
-    jeu5_matrix,
-    jeu5_max,
-    jeu7_matrix,
-    jeu7_max,
-    jeu8_matrix,
-    jeu8_max,
-    jeu10_matrix,
-    jeu10_max,
+    prot,
+    prot_max,
     w,
     t_interp_rna,
-    t_interp_jeu2,
-    t_interp_jeu3,
-    t_interp_jeu4,
-    t_interp_jeu5,
-    t_interp_jeu7,
-    t_interp_jeu8,
-    t_interp_jeu10,
+    t_interp_prot,
     t,
 ):
     """
@@ -316,32 +243,7 @@ def constraints_and_loss(
         return np.random.normal(1e10, 1e8)
 
     loss = compute_loss(
-        Y,
-        arn_seq,
-        arn_seq_max,
-        jeu2_matrix,
-        jeu2_max,
-        jeu3_matrix,
-        jeu3_max,
-        jeu4_matrix,
-        jeu4_max,
-        jeu5_matrix,
-        jeu5_max,
-        jeu7_matrix,
-        jeu7_max,
-        jeu8_matrix,
-        jeu8_max,
-        jeu10_matrix,
-        jeu10_max,
-        w,
-        t_interp_rna,
-        t_interp_jeu2,
-        t_interp_jeu3,
-        t_interp_jeu4,
-        t_interp_jeu5,
-        t_interp_jeu7,
-        t_interp_jeu8,
-        t_interp_jeu10,
+        Y, arn_seq, arn_seq_max, prot, prot_max, w, t_interp_rna, t_interp_prot
     )
     # return loss
     # do not care about constraint until the loss is low enough.
@@ -355,12 +257,14 @@ def constraints_and_loss(
 
         mi = np_min(Y[-601:], 0)
         amp = (ma - mi) / ma
-        a = np.array([0.15 * clock_tot, cb_max, 0.5 * per_tot, 5e-2, 1e-14, ma.max()])
-        b = np.array([cb_max, 0.85 * clock_tot, ma[11], amp.min(), mi.min(), 1e-5])
+        a = np.array([0.15 * clock_tot, cb_max, 0.5 * per_tot, 1e-14, ma.max()])
+        b = np.array([cb_max, 0.85 * clock_tot, ma[11], mi.min(), 1e-5])
 
         # period should be between 14 and 45 (large)
-        # release the period check when fit good enough as it prevents unusual oscillations
+        # release the period and amplitude check once fit is good enough
         if loss > 2.3:
+            a = np.append(a, 5e-2)
+            b = np.append(b, amp.min())
             p = np.zeros(Y.shape[1])
             for j in range(Y.shape[1]):
                 p[j] = indiv_period_comp(Y[-601:, j], t[-601:])
@@ -382,29 +286,11 @@ def fitness(
     f,
     arn_seq,
     arn_seq_max,
-    jeu2_matrix,
-    jeu2_max,
-    jeu3_matrix,
-    jeu3_max,
-    jeu4_matrix,
-    jeu4_max,
-    jeu5_matrix,
-    jeu5_max,
-    jeu7_matrix,
-    jeu7_max,
-    jeu8_matrix,
-    jeu8_max,
-    jeu10_matrix,
-    jeu10_max,
+    prot,
+    prot_max,
     w,
     t_interp_rna,
-    t_interp_jeu2,
-    t_interp_jeu3,
-    t_interp_jeu4,
-    t_interp_jeu5,
-    t_interp_jeu7,
-    t_interp_jeu8,
-    t_interp_jeu10,
+    t_interp_prot,
     t,
     y0,
 ):
@@ -429,29 +315,11 @@ def fitness(
         Y,
         arn_seq,
         arn_seq_max,
-        jeu2_matrix,
-        jeu2_max,
-        jeu3_matrix,
-        jeu3_max,
-        jeu4_matrix,
-        jeu4_max,
-        jeu5_matrix,
-        jeu5_max,
-        jeu7_matrix,
-        jeu7_max,
-        jeu8_matrix,
-        jeu8_max,
-        jeu10_matrix,
-        jeu10_max,
+        prot,
+        prot_max,
         w,
         t_interp_rna,
-        t_interp_jeu2,
-        t_interp_jeu3,
-        t_interp_jeu4,
-        t_interp_jeu5,
-        t_interp_jeu7,
-        t_interp_jeu8,
-        t_interp_jeu10,
+        t_interp_prot,
         t,
     )
 
@@ -486,7 +354,7 @@ def indiv_period_comp(Y, t, thresh=1.5):
     mean = 0 if len(pers) == 0 else np.sum(pers) / len(pers)
     if b.size != 0:
         # this part checks whether the peaks are similar from one period to another
-        # problematic if you have peaks at 24h and peaks at 12 though
+        # problematic if you have peaks      at 24h and peaks at 12 though
         mb = np.min(b)
         if mb > 0:
             if np.max(b) / mb < thresh:

@@ -14,7 +14,8 @@ from numba.types import Array, float32
 from functions import clock_model, fitness, from_log_010_to_ab, wrapper_fit
 from utils import (bounds_reach, get_parameter_bounds,
                    get_parameter_bounds_percent, get_random_parameters,
-                   new_preprocessing_rna_seq_data, preprocessing_prot_data)
+                   new_preprocessing_rna_seq_data,
+                   next_preprocessing_prot_data)
 
 # LIST OF THE PARAMETERS TO RE-ESTIMATE #######################################
 resdir = ""
@@ -63,10 +64,12 @@ def main():
         rna_seq_data, factor=10**9
     )
     rna_seq_list = [np.array(sum(r, [])) for r in rna_seq_list]
+
     # arr = Array(float32, 1, 'C')
     # typed_rna = List(arr)
     # [typed_rna.append(x) for x in rna_seq_list]
     # rna_seq_list = typed_rna
+
     rna_seq_max = [max(r) for r in rna_seq_list]
 
     ###########################################################################
@@ -77,60 +80,10 @@ def main():
         prot_data = pkl.load(f)
 
     # Data formating and time points initialisation
-    (
-        jeu2_matrix,
-        jeu2_timepoints,
-        jeu3_matrix,
-        jeu3_timepoints,
-        jeu4_matrix,
-        jeu4_timepoints,
-        jeu5_matrix,
-        jeu5_timepoints,
-        jeu7_matrix,
-        jeu7_timepoints,
-        jeu8_matrix,
-        jeu8_timepoints,
-        jeu10_matrix,
-        jeu10_timepoints,
-    ) = preprocessing_prot_data(prot_data)
-
-    jeu2_matrix /= 10**9
-    jeu3_matrix /= 10**9
-    jeu4_matrix /= 10**9
-    jeu5_matrix /= 10**9
-    jeu7_matrix /= 10**9
-    jeu8_matrix /= 10**9
-    jeu10_matrix /= 10**9
-    # Missing data handling
-
-    # Jeu 2
-    jeu2_max = np.nanmax(jeu2_matrix, axis=0)
-
-    # Jeu 3
-    jeu3_max = np.nanmax(jeu3_matrix, axis=0)
-
-    # Jeu 4
-    jeu4_max = np.nanmax(jeu4_matrix, axis=0)
-
-    # Jeu 5
-    jeu5_max = np.nanmax(jeu5_matrix, axis=0)
-    nanmean = np.nanmean(jeu5_matrix, axis=0)
-    inds = np.where(np.isnan(jeu5_matrix))
-    jeu5_matrix[inds] = np.take(nanmean, inds[1])
-
-    # Jeu 7
-    nan_columns_to_delete = [3, 5, 6, 11]
-    jeu7_matrix = np.delete(jeu7_matrix, nan_columns_to_delete, axis=1)
-    jeu7_max = np.nanmax(jeu7_matrix, axis=0)
-    nanmean = np.nanmean(jeu7_matrix, axis=0)
-    inds = np.where(np.isnan(jeu7_matrix))
-    jeu7_matrix[inds] = np.take(nanmean, inds[1])
-
-    # Jeu 8
-    jeu8_max = np.nanmax(jeu8_matrix, axis=0)
-
-    # Jeu 10
-    jeu10_max = np.nanmax(jeu10_matrix, axis=0)
+    prot_data = next_preprocessing_prot_data(prot_data)
+    prot_list = [d[0] for d in prot_data]
+    prot_cts = [d[1] for d in prot_data]
+    prot_max = np.array([d[2] for d in prot_data])
 
     ###########################################################################
 
@@ -156,13 +109,10 @@ def main():
         np.array([(tspan[-1] - 60 + ct) * 10 for ct in CT], dtype=np.int32)
         for CT in rna_seq_cts
     ]
-    t_interp_jeu2 = np.array((tspan[-1] - 60 + jeu2_timepoints) * 10, dtype=np.int32)
-    t_interp_jeu3 = np.array((tspan[-1] - 60 + jeu3_timepoints) * 10, dtype=np.int32)
-    t_interp_jeu4 = np.array((tspan[-1] - 60 + jeu4_timepoints) * 10, dtype=np.int32)
-    t_interp_jeu5 = np.array((tspan[-1] - 60 + jeu5_timepoints) * 10, dtype=np.int32)
-    t_interp_jeu7 = np.array((tspan[-1] - 60 + jeu7_timepoints) * 10, dtype=np.int32)
-    t_interp_jeu8 = np.array((tspan[-1] - 60 + jeu8_timepoints) * 10, dtype=np.int32)
-    t_interp_jeu10 = np.array((tspan[-1] - 60 + jeu10_timepoints) * 10, dtype=np.int32)
+    t_interp_prot = [
+        np.array([(tspan[-1] - 60 + ct) * 10 for ct in CT], dtype=np.int32)
+        for CT in prot_cts
+    ]
 
     # Initial values of the model parameters
     # params_julien = np.loadtxt('data/error2.6612_sw480_pcrmicro.txt')[0]
@@ -239,29 +189,11 @@ def main():
                             clock_model,
                             rna_seq_list,
                             rna_seq_max,
-                            jeu2_matrix,
-                            jeu2_max,
-                            jeu3_matrix,
-                            jeu3_max,
-                            jeu4_matrix,
-                            jeu4_max,
-                            jeu5_matrix,
-                            jeu5_max,
-                            jeu7_matrix,
-                            jeu7_max,
-                            jeu8_matrix,
-                            jeu8_max,
-                            jeu10_matrix,
-                            jeu10_max,
+                            prot_list,
+                            prot_max,
                             w,
                             t_interp_rna_seq,
-                            t_interp_jeu2,
-                            t_interp_jeu3,
-                            t_interp_jeu4,
-                            t_interp_jeu5,
-                            t_interp_jeu7,
-                            t_interp_jeu8,
-                            t_interp_jeu10,
+                            t_interp_prot,
                             tspan,
                             y0,
                         ),
