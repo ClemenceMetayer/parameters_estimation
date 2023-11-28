@@ -103,7 +103,7 @@ def main():
     w[-1] = 1
 
     # Time points vector initialisation
-    tspan = np.linspace(0, 1200, 12001)
+    tspan = np.linspace(0, 600, 6001)
 
     t_interp_rna_seq = [
         np.array([(tspan[-1] - 60 + ct) * 10 for ct in CT], dtype=np.int32)
@@ -115,10 +115,7 @@ def main():
     ]
 
     # Initial values of the model parameters
-    # params_julien = np.loadtxt('data/error2.6612_sw480_pcrmicro.txt')[0]
-    params_julien = np.loadtxt(
-        "results/example_new_cmaes_result_2.032966400368863.txt"
-    )[0]
+    params_julien = np.loadtxt('data/error2.6612_sw480_pcrmicro.txt')[0]
     # params_min, params_max = get_parameter_bounds_percent(params_julien,5)
     params_min, params_max = get_parameter_bounds(len(params_julien), "sw")
 
@@ -135,9 +132,9 @@ def main():
         "bounds": [lb, ub],
         "popsize": 64,
         "tolflatfitness": 1000,
-        "tolfun": 1e-7,
-        "tolfunhist": 1e-7,
-        "minstd": 1e-12,
+        "tolfun": 1e-5,
+        "tolfunhist": 1e-5,
+        "minstd": 1e-10,
     }
 
     # Initialisation of the scaler function

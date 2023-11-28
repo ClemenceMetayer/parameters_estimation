@@ -246,32 +246,36 @@ def constraints_and_loss(
         Y, arn_seq, arn_seq_max, prot, prot_max, w, t_interp_rna, t_interp_prot
     )
     # return loss
-    # do not care about constraint until the loss is low enough.
-    if loss < 1e4:
-        # cb_max = CLOCK/BMAL_C + CLOCK/BMAL_N
-        cb_max = w[0] * ma[0] + w[-2] * ma[-2]
-        # clock_tot = CLOCK/BMAL_C + CLOCK/BMAL_N + CLOCK_C
-        clock_tot = w[-6] * ma[-6] + cb_max
-        #  per_tot = PER/CRY_C + PER_C
-        per_tot = ma[11] + ma[10]
+    # # do not care about constraint until the loss is low enough.
+    # if loss < 1e4:
+    #     # cb_max = CLOCK/BMAL_C + CLOCK/BMAL_N
+    #     cb_max = w[0] * ma[0] + w[-2] * ma[-2]
+    #     # clock_tot = CLOCK/BMAL_C + CLOCK/BMAL_N + CLOCK_C
+    #     clock_tot = w[-6] * ma[-6] + cb_max
+    #     #  per_tot = PER/CRY_C + PER_C
+    #     per_tot = ma[11] + ma[10]
 
+    #     mi = np_min(Y[-601:], 0)
+    #     amp = (ma - mi) / ma
+    #     a = np.array([0.15 * clock_tot, cb_max, 0.5 * per_tot, 1e-14, ma.max()])
+    #     b = np.array([cb_max, 0.85 * clock_tot, ma[11], mi.min(), 1e-5])
+
+    if loss < 1e4:
         mi = np_min(Y[-601:], 0)
         amp = (ma - mi) / ma
-        a = np.array([0.15 * clock_tot, cb_max, 0.5 * per_tot, 1e-14, ma.max()])
-        b = np.array([cb_max, 0.85 * clock_tot, ma[11], mi.min(), 1e-5])
-
+        a = np.array([1e-14, ma.max()])
+        b = np.array([mi.min(), 1e-5])
         # period should be between 14 and 45 (large)
         # release the period and amplitude check once fit is good enough
-        if loss > 2.3:
-            a = np.append(a, 5e-2)
-            b = np.append(b, amp.min())
-            p = np.zeros(Y.shape[1])
-            for j in range(Y.shape[1]):
-                p[j] = indiv_period_comp(Y[-601:, j], t[-601:])
-            a = np.append(a, 14 * np.ones(Y.shape[1]))
-            a = np.append(a, p)
-            b = np.append(b, p)
-            b = np.append(b, 45 * np.ones(Y.shape[1]))
+        a = np.append(a, 5e-2)
+        b = np.append(b, amp.min())
+        p = np.zeros(Y.shape[1])
+        for j in range(Y.shape[1]):
+            p[j] = indiv_period_comp(Y[-601:, j], t[-601:])
+        a = np.append(a, 14 * np.ones(Y.shape[1]))
+        a = np.append(a, p)
+        b = np.append(b, p)
+        b = np.append(b, 45 * np.ones(Y.shape[1]))
         c = new_transform_constraint_penalty(a, b)
 
         full_loss = loss + c
